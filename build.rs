@@ -1,28 +1,28 @@
-use std::env;
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 fn main() {
-    let lib_dir = match env::var("ETHERCAT_LIB_DIR") {
-        Ok(dir) => PathBuf::from(dir),
-        Err(_) => PathBuf::from("/usr/local/lib")
-    }.canonicalize().expect("");
+    println!("cargo:rerun-if-env-changed=ETHERCAT_LIB_DIR");
+    println!("cargo:rerun-if-env-changed=ETHERCAT_INCLUDE_DIR");
 
-    if !lib_dir.join("libethercat.so").exists() {
-        panic!("Couldn't find libethercat.so")
-    }
+    let include_header = match pkg_config::Config::new().probe("ethercat") {
+        Ok(lib) => lib.include_paths.get(0).expect("No include path found").clone(),
+        Err(_) => {
+            let lib_dir = PathBuf::from(env::var("ETHERCAT_LIB_DIR").expect("Env var ETHERCAT_LIB_DIR not set"));
+            if !lib_dir.join("libethercat.so").exists() {
+                panic!("Couldn't find libethercat.so")
+            }
 
-    let include_dir = match env::var("ETHERCAT_INCLUDE_DIR") {
-        Ok(dir) => PathBuf::from(dir),
-        Err(_) => PathBuf::from("/usr/local/include")
-    }.canonicalize().expect("");
+            let include_dir = PathBuf::from(env::var("ETHERCAT_INCLUDE_DIR").expect("Env var ETHERCAT_INCLUDE_DIR not set"));
+            if !include_dir.join("ecrt.h").exists() {
+                panic!("Couldn't find ecrt.h")
+            }
 
-    let include_header = include_dir.join("ecrt.h");
-    if !include_header.exists() {
-        panic!("Couldn't find ecrt.h")
-    }
+            println!("cargo:rustc-link-search=native={}", lib_dir.display());
+            println!("cargo:rustc-link-lib=dylib=ethercat");
 
-    println!("cargo:rustc-link-search=native={}", lib_dir.display());
-    println!("cargo:rustc-link-lib=dylib=ethercat");
+            include_dir
+        }
+    };
 
     bindgen::Builder::default()
         .header(include_header.to_string_lossy()) 
