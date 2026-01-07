@@ -4,7 +4,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=ETHERCAT_LIB_DIR");
     println!("cargo:rerun-if-env-changed=ETHERCAT_INCLUDE_DIR");
 
-    let include_header = match pkg_config::Config::new().probe("ethercat") {
+    let include_header = match pkg_config::Config::new().probe("libethercat") {
         Ok(lib) => lib.include_paths.get(0).expect("No include path found").clone(),
         Err(_) => {
             let lib_dir = PathBuf::from(env::var("ETHERCAT_LIB_DIR").expect("Env var ETHERCAT_LIB_DIR not set"));
